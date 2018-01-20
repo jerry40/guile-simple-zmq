@@ -8,6 +8,7 @@
 	   zmq-close-socket
 	   zmq-bind-socket
 	   zmq-unbind-socket
+	   zmq-connect
 	   zmq-msg-init
 	   zmq-get-socket-option
 	   zmq-message-send
@@ -19,6 +20,8 @@
 	   zmq-send-msg-parts
 	   ))
 
+(define BUF-SIZE 4096)
+
 (define zmq (dynamic-link "libzmq"))
 
 (define (get-func-pointer func-name) (dynamic-func func-name zmq))
@@ -29,6 +32,7 @@
 (define zmq_close      (pointer->procedure int (get-func-pointer "zmq_close")      (list '*)))
 (define zmq_bind       (pointer->procedure int (get-func-pointer "zmq_bind")       (list '* '*)))
 (define zmq_unbind     (pointer->procedure int (get-func-pointer "zmq_unbind")     (list '* '*)))
+(define zmq_connect    (pointer->procedure int (get-func-pointer "zmq_connect")     (list '* '*)))
 (define zmq_msg_init   (pointer->procedure int (get-func-pointer "zmq_msg_init")   (list '*)))
 (define zmq_msg_send   (pointer->procedure int (get-func-pointer "zmq_msg_send")   (list '* '* int)))
 (define zmq_recv       (pointer->procedure int (get-func-pointer "zmq_recv")       (list '* '* size_t int)))
@@ -92,6 +96,11 @@
     (if (not (= result 0))
 	(zmq-get-error "Impossible to unbind socket"))))
 
+(define (zmq-connect socket address)
+  (let ((result (zmq_connect socket (string->pointer address))))
+    (if (not (= result 0))
+	(zmq-get-error "Impossible to connect to socket"))))
+
 (define (zmq-msg-init)
   (let ((zmq-msg-ptr (bytevector->pointer (make-bytevector 40))))
     (let ((result (zmq_msg_init zmq-msg-ptr)))
@@ -143,7 +152,7 @@
 	content-ptr)))
 
 (define* (zmq-get-msg-parts socket #:optional (parts '()))
-  (let ((part (string-copy (zmq-receive socket 4096))))
+  (let ((part (string-copy (zmq-receive socket BUF-SIZE))))
     (let ((new-parts (append parts (list part))))
       (let ((opt (zmq-get-socket-option socket 13))) ;; 13 ZMQ_RCVMORE
 	(if (> opt 0)
