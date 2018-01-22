@@ -1,5 +1,5 @@
 # guile-simple-zmq
-Guile wrapper over ZeroMQ library
+Guile wrapper over ZeroMQ library (Written and tested with GNU Guile 2.0.11)
 
 ## Example
 A server waits for a client message and answers to it. They executed in parallel in two different Jupyter Notebooks sessions.
