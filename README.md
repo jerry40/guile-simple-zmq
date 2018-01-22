@@ -2,7 +2,10 @@
 Guile wrapper over ZeroMQ library
 
 ## Example
+A server waits for a client message and answers to it. They executed in parallel in two different Jupyter Notebooks sessions.
+Server:
 ![](guile-zmq-server.png)
+Client:
 ![](guile-zmq-client.png)
 
 ## Installation
