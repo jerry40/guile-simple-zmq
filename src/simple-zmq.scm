@@ -2,7 +2,9 @@
  #:use-module (system foreign)
  #:use-module (rnrs bytevectors)
  #:use-module (ice-9 iconv)
- #:export (zmq-create-context
+ #:export (zmq-get-buffer-size
+	   zmq-set-buffer-size
+	   zmq-create-context
 	   zmq-destroy-context
 	   zmq-create-socket
 	   zmq-close-socket
@@ -56,6 +58,13 @@
     (ZMQ_XPUB   9)
     (ZMQ_XSUB   10)
     (ZMQ_STREAM 11)))
+
+(define (zmq-get-buffer-size)
+  BUF-SIZE)
+
+(define (zmq-set-buffer-size new-size)
+  "Change a buffer size, affects the zmq-get-msg-parts function"
+  (set! BUF-SIZE new-size))
 
 (define (zmq-get-socket-type type)
   (let ((result (assq type zmq-socket-types)))
@@ -166,20 +175,3 @@
 	(zmq-send socket data flag)
 	(zmq-send-msg-parts socket (cdr parts))
 	)))
-
-;(zmq-get-socket-type 'ZMQ_PUSH)
-;(define s (zmq-create-socket (zmq-create-context) 'ZMQ_REP))
-;(zmq-bind-socket s "tcp://127.0.0.1:57503")
-;(zmq-message-receive s)
-					;(display (zmq-msg-init))
-
-;(define context (zmq-create-context))
-;(define s (zmq-create-socket context 'ZMQ_REP))
-;(zmq-bind-socket s "tcp://127.0.0.1:5555")
-;(define m (zmq-msg-init))
-;(while #t
-;       (zmq-message-receive s m)
-;       (display "Ok!!")
-;       (display (pointer->string (zmq-message-content m)))
-;       (zmq-message-send s m)
-;       )
