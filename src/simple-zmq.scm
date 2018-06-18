@@ -20,7 +20,7 @@
 	   zmq-message-content
 	   zmq-get-msg-parts
 	   zmq-send-msg-parts
-	   ))
+           zmq-set-socket-option))
 
 (define BUF-SIZE 4096)
 
@@ -42,7 +42,7 @@
 (define zmq_msg_recv   (pointer->procedure int (get-func-pointer "zmq_msg_recv")   (list '* '* int)))
 (define zmq_msg_data   (pointer->procedure '*  (get-func-pointer "zmq_msg_data")   (list '*)))
 (define zmq_getsockopt (pointer->procedure int (get-func-pointer "zmq_getsockopt") (list '* int '* '*)))
-
+(define zmq_setsockopt (pointer->procedure int (get-func-pointer "zmq_setsockopt") (list '* int '* size_t)))
 
 ;; socket types 
 (define zmq-socket-types
@@ -125,6 +125,13 @@
       (if (= result -1)
 	  (zmq-get-error "Impossible to get socket option")
 	  (bytevector-u8-ref opt 0)))))
+
+(define (zmq-set-socket-option socket option str)
+  (let ((vstr (string->bytevector str "ASCII"))
+        (lstr (string-length str)))
+    (let ((result (zmq_setsockopt socket option (bytevector->pointer vstr) lstr)))
+      (if (= result -1)
+	  (zmq-get-error "Impossible to set socket option")))))
 
 (define (zmq-message-send socket message)
   (let ((result (zmq_msg_send message socket 0)))
