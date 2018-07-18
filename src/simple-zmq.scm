@@ -278,7 +278,6 @@
 
 (define (zmq-get-error errno)
   (let ((strerror (zmq-get-strerror errno)))
-    (display "ZMQ: error\n")
     (throw 'zmq-error errno strerror)))
 
 (define (zmq-get-error-msg msg)
@@ -343,14 +342,26 @@
 	  (zmq-get-error errno)
 	  (bytevector-u8-ref opt 0)))))
 
-(define (zmq-set-socket-option socket option str)
-  (let* ((vstr (string->bv str))
-         (lstr (string-length str)))
-    (let-values (((result errno) (zmq_setsockopt socket option
-                                                 (bytevector->pointer vstr)
-                                                 lstr)))
-      (if (= result -1)
-          (zmq-get-error errno)))))
+(define (zmq-set-socket-option socket option value)
+  (define (value->type+length value)
+    (cond
+     ((string? value)                             ;for backward compatibility
+      (let* ((vstr (string->bytevector value "ASCII"))
+             (lstr (string-length value)))
+        (values (bytevector->pointer vstr)
+                lstr)))
+     ((number? value)
+      (let* ((bv (make-u32vector 1)))
+        (bytevector-u32-native-set! bv 0 value)
+        (values (bytevector->pointer bv) (sizeof uint32))))
+     (else
+      (zmq-get-error-msg "Wrong VALUE type in zmq-set-socket-option"))))
+
+  (let*-values (((val len) (value->type+length value))
+                ((result errno) (zmq_setsockopt socket option
+                                                val len)))
+    (when (= result -1)
+      (zmq-get-error errno))))
 
 (define (zmq-message-send socket message)
   (let-values (((result errno) (zmq_msg_send message socket 0)))
