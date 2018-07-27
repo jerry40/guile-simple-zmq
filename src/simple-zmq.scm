@@ -18,10 +18,18 @@
             zmq-message-receive
             zmq-receive
             zmq-send
+            zmq-receive-bytevector
+            zmq-send-bytevector
             zmq-message-content
             zmq-get-msg-parts
             zmq-send-msg-parts
+            zmq-get-msg-parts-bytevector
+            zmq-send-msg-parts-bytevector
             zmq-set-socket-option
+            string->bv
+            bv->string
+            string-list->bv-list
+            bv-list->string-list
 
             ZMQ_PAIR
             ZMQ_PUB
@@ -326,7 +334,7 @@
 	  (bytevector-u8-ref opt 0)))))
 
 (define (zmq-set-socket-option socket option str)
-  (let* ((vstr (string->bytevector str "ASCII"))
+  (let* ((vstr (string->bv str))
          (lstr (string-length str)))
     (let-values (((result errno) (zmq_setsockopt socket option
                                                  (bytevector->pointer vstr)
@@ -339,23 +347,35 @@
     (if (= result -1)
 	(zmq-get-error errno))))
 
-(define (zmq-receive socket len)
+(define (zmq-receive-bytevector socket len)
   (let  ((buffer (make-bytevector len 0)))
     (let-values (((result errno) (zmq_recv socket (bytevector->pointer buffer) len 0)))
       (cond
        ((< result 0) (zmq-get-error errno))
        ((= result 0) "")
        (else
-        (pointer->string (bytevector->pointer buffer) (min len result)))))))
+	(let ((ret-length (min len result)))
+	  (if (< ret-length len)
+	      (let ((ret (make-bytevector ret-length))) ;; create a bytevector having a length of received message
+	        (bytevector-copy! buffer 0 ret 0 ret-length)
+		ret)
+	      buffer)))))))
 
-(define* (zmq-send socket data #:optional (flag 0))
-  (let*  ((len    (string-length data))
-	  (buffer (string->bytevector data "ASCII")))
+(define (zmq-receive socket len)
+  (let  ((buffer (zmq-receive-bytevector socket len)))
+    (bv->string buffer)))
+
+(define* (zmq-send-bytevector socket data #:optional (flag 0))
+  (let*  ((len (bytevector-length data)))
     (let-values (((result errno) (zmq_send socket
-                                           (bytevector->pointer buffer)
+                                           (bytevector->pointer data)
                                            len flag)))
       (if (< result 0)
           (zmq-get-error errno)))))
+
+(define* (zmq-send socket data #:optional (flag 0))
+  (let*  ((buffer (string->bv data)))
+    (zmq-send-bytevector socket buffer flag)))
 
 (define (zmq-message-receive socket message)
   (let-values (((result errno) (zmq_msg_recv message socket 0)))
@@ -373,17 +393,41 @@
 ;; Message parts.
 ;;
 
-(define* (zmq-get-msg-parts socket #:optional (parts '()))
-  (let* ((part      (string-copy (zmq-receive socket BUF-SIZE)))
+(define* (zmq-get-msg-parts-bytevector socket #:optional (parts '()))
+  (let* ((part      (zmq-receive-bytevector socket BUF-SIZE))
          (new-parts (append parts (list part)))
          (opt       (zmq-get-socket-option socket ZMQ_RCVMORE)))
     (if (> opt 0)
-        (zmq-get-msg-parts socket new-parts)
+        (zmq-get-msg-parts-bytevector socket new-parts)
         new-parts)))
 
-(define (zmq-send-msg-parts socket parts)
+(define (zmq-send-msg-parts-bytevector socket parts)
   (if (not (null? parts))
       (let* ((data (car parts))
 	     (flag  (if (> (length parts) 1) ZMQ_SNDMORE 0)))
-	(zmq-send socket data flag)
-	(zmq-send-msg-parts socket (cdr parts)))))
+	(zmq-send-bytevector socket data flag)
+	(zmq-send-msg-parts-bytevector socket (cdr parts)))))
+
+(define* (zmq-get-msg-parts socket #:optional (parts '()))
+  (bv-list->string-list
+   (zmq-get-msg-parts-bytevector socket parts)))
+
+(define (zmq-send-msg-parts socket parts)
+  (let ((bv-parts (string-list->bv-list parts)))
+    (zmq-send-msg-parts-bytevector socket bv-parts)))
+
+;; convert ascii string into bytevector
+(define (string->bv text)
+  (string->bytevector text "ASCII"))
+
+;; convert bytevector into ascii string
+(define (bv->string bv)
+  (bytevector->string bv "ASCII"))
+
+;; convert a list of strings to a list of bytevectors
+(define (string-list->bv-list str-list)
+  (map string->bv str-list))
+
+;; convert a list of bytevectors to a list of strings
+(define (bv-list->string-list bv-list)
+  (map bv->string bv-list))
