@@ -5,6 +5,8 @@
   #:use-module (ice-9 iconv)
   #:export (zmq-get-buffer-size
             zmq-set-buffer-size
+            zmq-get-msg-encoding
+            zmq-set-msg-encoding
             zmq-create-context
             zmq-destroy-context
             zmq-create-socket
@@ -125,6 +127,7 @@
             ZMQ_SNDMORE))
 
 (define BUF-SIZE 4096)
+(define MSG-ENCODING "UTF8")
 
 (define zmq (dynamic-link "libzmq"))
 
@@ -258,6 +261,13 @@
 (define (zmq-set-buffer-size new-size)
   "Change a buffer size, affects the zmq-get-msg-parts function"
   (set! BUF-SIZE new-size))
+
+(define (zmq-get-msg-encoding)
+  MSG-ENCODING)
+
+(define (zmq-set-msg-encoding new-encoding)
+  "Change encoding that used in bytevectors <-> string transformations. UTF8, ASCII etc"
+  (set! MSG-ENCODING new-encoding))
 
 ;;
 ;; Error.
@@ -418,11 +428,11 @@
 
 ;; convert ascii string into bytevector
 (define (string->bv text)
-  (string->bytevector text "ASCII"))
+  (string->bytevector text MSG-ENCODING))
 
 ;; convert bytevector into ascii string
 (define (bv->string bv)
-  (bytevector->string bv "ASCII"))
+  (bytevector->string bv MSG-ENCODING))
 
 ;; convert a list of strings to a list of bytevectors
 (define (string-list->bv-list str-list)
