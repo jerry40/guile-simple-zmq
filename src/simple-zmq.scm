@@ -372,6 +372,7 @@
   (let  ((buffer (make-bytevector len 0)))
     (let-values (((result errno) (zmq_recv socket (bytevector->pointer buffer) len 0)))
       (cond
+       ((and (< result 0) (= errno 4)) (zmq-receive-bytevector socket len)) ;; apparently after getting EINTR error, socket should be read again
        ((< result 0) (zmq-get-error errno))
        ((= result 0) "")
        (else
