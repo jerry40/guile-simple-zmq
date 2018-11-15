@@ -3,7 +3,10 @@
   #:use-module (rnrs bytevectors)
   #:use-module (srfi srfi-11)
   #:use-module (ice-9 iconv)
-  #:export (zmq-get-buffer-size
+  #:export (zmq-context?
+            zmq-socket?
+
+            zmq-get-buffer-size
             zmq-set-buffer-size
             zmq-get-msg-encoding
             zmq-set-msg-encoding
@@ -158,6 +161,22 @@
 (define zmq_strerror   (import-func '*  "zmq_strerror"   (list int)    #f))
 (define zmq_unbind     (import-func int "zmq_unbind"     (list '* '*)  #t))
 
+;; Data types.
+
+(define-wrapped-pointer-type <zmq-context> zmq-context?
+  pointer->context context->pointer
+  (lambda (context port)
+    (format port "#<zmq-context ~a>"
+            (number->string (object-address context) 16))))
+
+(define-wrapped-pointer-type <zmq-socket> zmq-socket?
+  pointer->socket socket->pointer
+  (lambda (socket port)
+    (let ((type (zmq-get-socket-option socket ZMQ_TYPE)))
+      (format port "#<zmq-socket type: ~a ~a>"
+              type
+              (number->string (object-address socket) 16)))))
+
 ;; socket types
 (define ZMQ_PAIR   0)
 (define ZMQ_PUB    1)
@@ -292,36 +311,39 @@
   (let-values (((context errno) (zmq_ctx_new)))
     (if (null-pointer? context)
 	(zmq-get-error errno)
-	context)))
+	(pointer->context context))))
 
 (define (zmq-destroy-context context)
-  (let-values (((result errno) (zmq_ctx_term context)))
+  (let-values (((result errno) (zmq_ctx_term (context->pointer context))))
     (if (not (= result 0))
 	(zmq-get-error errno))))
 
 (define (zmq-create-socket context type)
-  (let-values (((socket errno) (zmq_socket context type)))
+  (let-values (((socket errno) (zmq_socket (context->pointer context) type)))
     (if (null-pointer? socket)
         (zmq-get-error errno)
-	socket)))
+	(pointer->socket socket))))
 
 (define (zmq-close-socket socket)
-  (let-values (((result errno) (zmq_close socket)))
+  (let-values (((result errno) (zmq_close (socket->pointer socket))))
     (if (not (= result 0))
 	(zmq-get-error errno))))
 
 (define (zmq-bind-socket socket address)
-  (let-values (((result errno) (zmq_bind socket (string->pointer address))))
+  (let-values (((result errno) (zmq_bind (socket->pointer socket)
+                                         (string->pointer address))))
     (if (not (= result 0))
 	(zmq-get-error errno))))
 
 (define (zmq-unbind-socket socket address)
-  (let-values (((result errno) (zmq_unbind socket (string->pointer address))))
+  (let-values (((result errno) (zmq_unbind (socket->pointer socket)
+                                           (string->pointer address))))
     (if (not (= result 0))
 	(zmq-get-error errno))))
 
 (define (zmq-connect socket address)
-  (let-values (((result errno) (zmq_connect socket (string->pointer address))))
+  (let-values (((result errno) (zmq_connect (socket->pointer socket)
+                                            (string->pointer address))))
     (if (not (= result 0))
 	(zmq-get-error errno))))
 
@@ -340,7 +362,8 @@
 	 (size       (make-bytevector (sizeof size_t))))
     (bytevector-uint-set! size 0 value-size
                           (native-endianness) (sizeof size_t))
-    (let-values (((result errno) (zmq_getsockopt socket option
+    (let-values (((result errno) (zmq_getsockopt (socket->pointer socket)
+                                                 option
                                                  (bytevector->pointer opt)
                                                  (bytevector->pointer size))))
       (if (= result -1)
@@ -350,20 +373,24 @@
 (define (zmq-set-socket-option socket option str)
   (let* ((vstr (string->bv str))
          (lstr (string-length str)))
-    (let-values (((result errno) (zmq_setsockopt socket option
+    (let-values (((result errno) (zmq_setsockopt (socket->pointer socket)
+                                                 option
                                                  (bytevector->pointer vstr)
                                                  lstr)))
       (if (= result -1)
           (zmq-get-error errno)))))
 
 (define (zmq-message-send socket message)
-  (let-values (((result errno) (zmq_msg_send message socket 0)))
+  (let-values (((result errno)
+                (zmq_msg_send message (socket->pointer socket) 0)))
     (if (= result -1)
 	(zmq-get-error errno))))
 
 (define (zmq-receive-bytevector socket len)
   (let  ((buffer (make-bytevector len 0)))
-    (let-values (((result errno) (zmq_recv socket (bytevector->pointer buffer) len 0)))
+    (let-values (((result errno) (zmq_recv (socket->pointer socket)
+                                           (bytevector->pointer buffer)
+                                           len 0)))
       (cond
        ((< result 0) (zmq-get-error errno))
        ((= result 0) "")
@@ -381,7 +408,7 @@
 
 (define* (zmq-send-bytevector socket data #:optional (flag 0))
   (let*  ((len (bytevector-length data)))
-    (let-values (((result errno) (zmq_send socket
+    (let-values (((result errno) (zmq_send (socket->pointer socket)
                                            (bytevector->pointer data)
                                            len flag)))
       (if (< result 0)
@@ -392,7 +419,8 @@
     (zmq-send-bytevector socket buffer flag)))
 
 (define (zmq-message-receive socket message)
-  (let-values (((result errno) (zmq_msg_recv message socket 0)))
+  (let-values (((result errno) (zmq_msg_recv message
+                                             (socket->pointer socket) 0)))
     (if (= result -1)
 	(zmq-get-error errno)
         message)))
