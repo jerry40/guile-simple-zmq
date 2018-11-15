@@ -333,15 +333,19 @@
         zmq-msg-ptr)))
 
 (define (zmq-get-socket-option socket option)
-  (let ((opt (make-bytevector 8))
-	(size (make-bytevector 8)))
-    (bytevector-u8-set! size 0 8)
+  (let* ((value-size (if (= option ZMQ_TYPE)      ;TODO: Add more types.
+                         (sizeof int)
+                         (sizeof size_t)))
+         (opt        (make-bytevector value-size))
+	 (size       (make-bytevector (sizeof size_t))))
+    (bytevector-uint-set! size 0 value-size
+                          (native-endianness) (sizeof size_t))
     (let-values (((result errno) (zmq_getsockopt socket option
                                                  (bytevector->pointer opt)
                                                  (bytevector->pointer size))))
       (if (= result -1)
 	  (zmq-get-error errno)
-	  (bytevector-u8-ref opt 0)))))
+	  (bytevector-uint-ref opt 0 (native-endianness) value-size)))))
 
 (define (zmq-set-socket-option socket option str)
   (let* ((vstr (string->bv str))
