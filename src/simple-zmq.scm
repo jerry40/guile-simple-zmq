@@ -21,8 +21,10 @@
 (define-module (simple-zmq)
   #:use-module (system foreign)
   #:use-module (rnrs bytevectors)
+  #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-11)
   #:use-module (ice-9 iconv)
+  #:use-module (ice-9 match)
   #:export (zmq-context?
             zmq-socket?
 
@@ -55,6 +57,13 @@
             bv->string
             string-list->bv-list
             bv-list->string-list
+
+            poll-item?
+            poll-item
+            poll-item-socket
+            poll-item-fd
+            poll-item-events
+            zmq-poll
 
             ZMQ_PAIR
             ZMQ_PUB
@@ -147,7 +156,11 @@
             ZMQ_SHARED
 
             ZMQ_DONTWAIT
-            ZMQ_SNDMORE))
+            ZMQ_SNDMORE
+
+            ZMQ_POLLIN
+            ZMQ_POLLOUT
+            ZMQ_POLLERR))
 
 (define BUF-SIZE 4096)
 (define MSG-ENCODING "UTF8")
@@ -180,6 +193,7 @@
 (define zmq_socket     (import-func '*  "zmq_socket"     (list '* int) #t))
 (define zmq_strerror   (import-func '*  "zmq_strerror"   (list int)    #f))
 (define zmq_unbind     (import-func int "zmq_unbind"     (list '* '*)  #t))
+(define zmq_poll       (import-func int "zmq_poll"       (list '* int long) #t))
 
 ;; Data types.
 
@@ -196,6 +210,23 @@
       (format port "#<zmq-socket type: ~a ~a>"
               type
               (number->string (object-address socket) 16)))))
+
+;; Structure used by 'zmq-poll'.
+(define-record-type <poll-item>
+  (%poll-item socket fd events)
+  poll-item?
+  (socket   poll-item-socket)
+  (fd       poll-item-fd)
+  (events   poll-item-events))
+
+(define* (poll-item socket
+                    #:optional
+                    (events (logior ZMQ_POLLIN ZMQ_POLLOUT ZMQ_POLLERR))
+                    #:key (fd -1))
+  "Return a new \"poll item\" record suitable suitable for 'zmq-poll'.  The
+poll item will allow 'zmq-poll' to wait for EVENTS on SOCKET or on FD if
+SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
+  (%poll-item socket fd events))
 
 ;; socket types
 (define ZMQ_PAIR   0)
@@ -293,6 +324,11 @@
 ;; zmq send recv options
 (define ZMQ_DONTWAIT 1)
 (define ZMQ_SNDMORE  2)
+
+;; polling
+(define ZMQ_POLLIN  1)
+(define ZMQ_POLLOUT 2)
+(define ZMQ_POLLERR 4)
 
 (define (zmq-get-buffer-size)
   BUF-SIZE)
@@ -504,3 +540,72 @@
 ;; convert a list of bytevectors to a list of strings
 (define (bv-list->string-list bv-list)
   (map bv->string bv-list))
+
+(define %pollitem-struct
+  ;; The 'zmq_pollitem_t' struct.
+  (list '* int short short))
+
+(define (poll-items->array lst)
+  "Return a C array of 'zmq_pollitem_t' structures made from LST, a list of
+<poll-item>, along with the number of elements in that array."
+  (define pollitem-size
+    (sizeof %pollitem-struct))
+
+  (let* ((len   (length lst))
+         (array (make-bytevector (* len pollitem-size))))
+    (let loop ((index 0)
+               (lst lst))
+      (match lst
+        (()
+         (values (bytevector->pointer array) len))
+        ((($ <poll-item> socket fd events) . tail)
+         ;; XXX: A shortcoming of the FFI forces us to allocate an
+         ;; intermediate C structure.  Oh well.
+         (let ((struct (make-c-struct %pollitem-struct
+                                      (list (if socket
+                                                (socket->pointer socket)
+                                                %null-pointer)
+                                            fd
+                                            events
+                                            0))))
+           (bytevector-copy! (pointer->bytevector struct pollitem-size) 0
+                             array index pollitem-size)
+           (loop (+ pollitem-size index) tail)))))))
+
+(define (array->poll-items array len)
+  "Turn ARRAY, a C array of LEN 'zmq_pollitem_t' elements, into a list of
+<poll-item> records.  Structures with an 'revents' field equal to zero are
+omitted."
+  (define pollitem-size
+    (sizeof %pollitem-struct))
+
+  (define (pointer+ pointer offset)
+    (make-pointer (+ (pointer-address pointer) offset)))
+
+  (let loop ((index 0)
+             (result '()))
+    (if (= index (* len pollitem-size))
+        (reverse result)
+        (loop (+ index pollitem-size)
+              (match (parse-c-struct (pointer+ array index)
+                                     %pollitem-struct)
+                ((socket fd events 0)             ;no events
+                 result)
+                ((socket fd events revents)
+                 (cons (poll-item (if (null-pointer? socket)
+                                      #f
+                                      (pointer->socket socket))
+                                  events
+                                  #:fd fd)
+                       result)))))))
+
+(define* (zmq-poll items #:optional (timeout -1))
+  "Poll on the given ITEMS, a list of <poll-item> records; wait until one of
+the requested events occurred or TIMEOUT has expired.  When TIMEOUT is -1,
+wait indefinitely.  Return a possibly empty list of <poll-item> records
+denoting the events that occurred."
+  (let*-values (((array length)  (poll-items->array items))
+                ((result errno) (zmq_poll array length timeout)))
+    (if (>= result 0)
+        (array->poll-items array length)
+        (zmq-get-error errno))))
