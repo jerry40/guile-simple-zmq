@@ -1,3 +1,23 @@
+;;; Guile-Simple-ZMQ --- ZeroMQ bindings for GNU Guile.
+;;; Copyright © 2018 Evgeny Panfilov <epanfilov@gmail.com>
+;;; Copyright © 2018 Pierre-Antoine Rouby <contact@parouby.fr>
+;;; Copyright © 2018 Ludovic Courtès <ludo@gnu.org>
+;;;
+;;; This file is part of Guile-Simple-ZMQ.
+;;;
+;;; Guile-Simple-ZMQ is free software; you can redistribute it and/or modify it
+;;; under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation; either version 3 of the License, or (at
+;;; your option) any later version.
+;;;
+;;; Guile-Simple-ZMQ is distributed in the hope that it will be useful, but
+;;; WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;;; GNU General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with Guile-Simple-ZMQ.  If not, see <http://www.gnu.org/licenses/>.
+
 (define-module (simple-zmq)
   #:use-module (system foreign)
   #:use-module (rnrs bytevectors)
