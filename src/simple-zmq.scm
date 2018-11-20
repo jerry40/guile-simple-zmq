@@ -223,7 +223,7 @@
                     #:optional
                     (events (logior ZMQ_POLLIN ZMQ_POLLOUT ZMQ_POLLERR))
                     #:key (fd -1))
-  "Return a new \"poll item\" record suitable suitable for 'zmq-poll'.  The
+  "Return a new \"poll item\" record suitable for 'zmq-poll'.  The
 poll item will allow 'zmq-poll' to wait for EVENTS on SOCKET or on FD if
 SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
   (%poll-item socket fd events))
@@ -595,7 +595,7 @@ omitted."
                  (cons (poll-item (if (null-pointer? socket)
                                       #f
                                       (pointer->socket socket))
-                                  events
+                                  revents
                                   #:fd fd)
                        result)))))))
 
