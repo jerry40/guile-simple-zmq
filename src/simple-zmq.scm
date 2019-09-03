@@ -1,7 +1,7 @@
 ;;; Guile-Simple-ZMQ --- ZeroMQ bindings for GNU Guile.
 ;;; Copyright © 2018 Evgeny Panfilov <epanfilov@gmail.com>
 ;;; Copyright © 2018 Pierre-Antoine Rouby <contact@parouby.fr>
-;;; Copyright © 2018 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2018, 2019 Ludovic Courtès <ludo@gnu.org>
 ;;;
 ;;; This file is part of Guile-Simple-ZMQ.
 ;;;
@@ -34,6 +34,7 @@
             zmq-set-msg-encoding
             zmq-create-context
             zmq-destroy-context
+            zmq-set-context-option
             zmq-create-socket
             zmq-close-socket
             zmq-bind-socket
@@ -77,6 +78,9 @@
             ZMQ_XPUB
             ZMQ_XSUB
             ZMQ_STREAM
+
+            ZMQ_IO_THREADS
+            ZMQ_MAX_SOCKETS
 
             ZMQ_AFFINITY                 
             ZMQ_IDENTITY                 
@@ -182,6 +186,7 @@
 (define zmq_connect    (import-func int "zmq_connect"    (list '* '*) #t))
 (define zmq_ctx_new    (import-func '*  "zmq_ctx_new"    '()          #t))
 (define zmq_ctx_term   (import-func '*  "zmq_ctx_term"   (list '*)    #t))
+(define zmq_ctx_set    (import-func int "zmq_ctx_set"    (list '* int int) #t))
 (define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
 (define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
 (define zmq_msg_init   (import-func int "zmq_msg_init"   (list '*)           #f))
@@ -241,6 +246,10 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 (define ZMQ_XPUB   9)
 (define ZMQ_XSUB   10)
 (define ZMQ_STREAM 11)
+
+;; context options
+(define ZMQ_IO_THREADS  1)
+(define ZMQ_MAX_SOCKETS 2)
 
 ;; socket options
 (define ZMQ_AFFINITY                 4)
@@ -372,6 +381,14 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
   (let-values (((result errno) (zmq_ctx_term (context->pointer context))))
     (if (not (= result 0))
 	(zmq-get-error errno))))
+
+(define (zmq-set-context-option context option value)
+  "Set the OPTION of CONTEXT to VALUE.  OPTION must be an integer such as
+'ZMQ_IO_THREADS' or 'ZMQ_MAX_SOCKETS', and VALUE must be an integer."
+  (let-values (((result errno)
+                (zmq_ctx_set (context->pointer context) option value)))
+    (unless (zero? result)
+      (zmq-get-error errno))))
 
 (define (zmq-create-socket context type)
   (let-values (((socket errno) (zmq_socket (context->pointer context) type)))
