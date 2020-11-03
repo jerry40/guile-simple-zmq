@@ -66,6 +66,8 @@
             poll-item-events
             zmq-poll
 
+            zmq-proxy
+
             ZMQ_PAIR
             ZMQ_PUB
             ZMQ_SUB
@@ -199,6 +201,7 @@
 (define zmq_strerror   (import-func '*  "zmq_strerror"   (list int)    #f))
 (define zmq_unbind     (import-func int "zmq_unbind"     (list '* '*)  #t))
 (define zmq_poll       (import-func int "zmq_poll"       (list '* int long) #t))
+(define zmq_proxy      (import-func int "zmq_proxy"      (list '* '* '*) #t))
 
 ;; Data types.
 
@@ -626,3 +629,13 @@ denoting the events that occurred."
     (if (>= result 0)
         (array->poll-items array length)
         (zmq-get-error errno))))
+
+(define* (zmq-proxy frontend backend #:optional (capture #f))
+  "Start built-in proxy connecting FRONTEND to BACKEND.  If CAPTURE socket is
+set the proxy shall send all messages received on both FRONTEND and BACKEND to
+the CAPTURE socket."
+  (zmq_proxy (socket->pointer frontend)
+             (socket->pointer backend)
+             (if capture
+                 (socket->pointer capture)
+                 %null-pointer)))
