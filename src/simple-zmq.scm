@@ -185,7 +185,7 @@
 (define zmq_close      (import-func int "zmq_close"      (list '*)    #t))
 (define zmq_connect    (import-func int "zmq_connect"    (list '* '*) #t))
 (define zmq_ctx_new    (import-func '*  "zmq_ctx_new"    '()          #t))
-(define zmq_ctx_term   (import-func '*  "zmq_ctx_term"   (list '*)    #t))
+(define zmq_ctx_term   (import-func int "zmq_ctx_term"   (list '*)    #t))
 (define zmq_ctx_set    (import-func int "zmq_ctx_set"    (list '* int int) #t))
 (define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
 (define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
