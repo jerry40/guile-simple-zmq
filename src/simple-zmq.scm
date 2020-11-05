@@ -480,7 +480,7 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
       (cond
        ((and (< result 0) (= errno 4)) (zmq-receive-bytevector socket len)) ;; apparently after getting EINTR error, socket should be read again
        ((< result 0) (zmq-get-error errno))
-       ((= result 0) "")
+       ((= result 0) (make-bytevector 0))
        (else
 	(let ((ret-length (min len result)))
 	  (if (< ret-length len)
