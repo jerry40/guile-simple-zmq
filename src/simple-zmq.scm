@@ -498,8 +498,11 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
     (let-values (((result errno) (zmq_send (socket->pointer socket)
                                            (bytevector->pointer data)
                                            len flag)))
-      (if (< result 0)
-          (zmq-get-error errno)))))
+      (cond
+       ((and (< result 0) (= errno 4))
+        (zmq-send-bytevector socket data flag))
+       ((< result 0)
+        (zmq-get-error errno))))))
 
 (define* (zmq-send socket data #:optional (flag 0))
   (let*  ((buffer (string->bv data)))
