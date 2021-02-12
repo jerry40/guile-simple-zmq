@@ -174,6 +174,15 @@
 
 (define zmq (dynamic-link "libzmq"))
 
+(define (zmq->pointer name)
+  (catch #t
+    (lambda ()
+      (dynamic-func name zmq))
+    (lambda args
+      (lambda _
+        (throw 'system-error name  "~A" (list (strerror ENOSYS))
+               (list ENOSYS))))))
+
 (define (import-func ret-type name arguments errno?)
   (catch #t
     (lambda ()
@@ -424,12 +433,19 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
     (if (not (= result 0))
 	(zmq-get-error errno))))
 
+(define %zmq-message-close
+  (zmq->pointer "zmq_msg_close"))
+
+(define (set-message-finalizer! message)
+  (set-pointer-finalizer! message %zmq-message-close)
+  message)
+
 (define (zmq-msg-init)
   (let* ((zmq-msg-ptr (bytevector->pointer (make-bytevector 40)))
          (result (zmq_msg_init zmq-msg-ptr)))
     (if (not (= result 0))
         (zmq-get-error-msg "Function zmq-msg-init failed.")
-        zmq-msg-ptr)))
+        (set-message-finalizer! zmq-msg-ptr))))
 
 (define (zmq-get-socket-option socket option)
   (let* ((value-size (if (= option ZMQ_TYPE)      ;TODO: Add more types.
