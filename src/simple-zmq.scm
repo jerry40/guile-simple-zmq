@@ -535,20 +535,26 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
   (let*  ((buffer (string->bv data)))
     (zmq-send-bytevector socket buffer flag)))
 
-(define (zmq-message-receive socket message)
-  (let-values (((result errno) (zmq_msg_recv message
-                                             (socket->pointer socket) 0)))
+(define (zmq-message-receive socket)
+  (let*-values (((message) (zmq-msg-init))
+                ((result errno) (zmq_msg_recv message
+                                              (socket->pointer socket) 0)))
     (if (= result -1)
-	(zmq-get-error errno)
-        message)))
+        (zmq-get-error errno)
+        (let ((opt (zmq-get-socket-option socket ZMQ_RCVMORE)))
+          (if (> opt 0)
+              (cons message (zmq-message-receive socket))
+              (list message))))))
+
 (define (zmq-message-size message)
   (zmq_msg_size message))
 
 (define (zmq-message-content message)
-  (let ((content-ptr (zmq_msg_data message)))
+  (let ((content-ptr (zmq_msg_data message))
+        (size (zmq-message-size message)))
     (if (null-pointer? content-ptr)
-	(zmq-get-error-msg "Function zmq-message-content failed.")
-	content-ptr)))
+        (zmq-get-error-msg "Function zmq-message-content failed.")
+        (pointer->bytevector content-ptr size))))
 
 ;;
 ;; Message parts.
