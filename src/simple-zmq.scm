@@ -42,6 +42,7 @@
             zmq-connect
             zmq-msg-init
             zmq-get-socket-option
+            zmq-message-gets
             zmq-message-send
             zmq-message-receive
             zmq-receive
@@ -192,6 +193,7 @@
 (define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
 (define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
 (define zmq_msg_init   (import-func int "zmq_msg_init"   (list '*)           #f))
+(define zmq_msg_gets   (import-func '*  "zmq_msg_gets"   (list '* '*)        #t))
 (define zmq_msg_recv   (import-func int "zmq_msg_recv"   (list '* '* int)    #t))
 (define zmq_msg_send   (import-func int "zmq_msg_send"   (list '* '* int)    #t))
 (define zmq_recv       (import-func int "zmq_recv"       (list '* '* size_t int) #t))
@@ -465,6 +467,13 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
                                                 option val len)))
     (when (= result -1)
       (zmq-get-error errno))))
+
+(define (zmq-message-gets message property)
+  (let-values (((result errno)
+                (zmq_msg_gets message (string->pointer property))))
+    (if (null-pointer? result)
+        (zmq-get-error errno)
+        (pointer->string result))))
 
 (define (zmq-message-send socket message)
   (let-values (((result errno)
