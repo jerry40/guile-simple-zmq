@@ -49,6 +49,7 @@
             zmq-send
             zmq-receive-bytevector
             zmq-send-bytevector
+            zmq-message-size
             zmq-message-content
             zmq-get-msg-parts
             zmq-send-msg-parts
@@ -201,6 +202,7 @@
 (define zmq_ctx_set    (import-func int "zmq_ctx_set"    (list '* int int) #t))
 (define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
 (define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
+(define zmq_msg_size   (import-func int "zmq_msg_size"   (list '*)           #f))
 (define zmq_msg_init   (import-func int "zmq_msg_init"   (list '*)           #f))
 (define zmq_msg_gets   (import-func '*  "zmq_msg_gets"   (list '* '*)        #t))
 (define zmq_msg_recv   (import-func int "zmq_msg_recv"   (list '* '* int)    #t))
@@ -539,6 +541,8 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
     (if (= result -1)
 	(zmq-get-error errno)
         message)))
+(define (zmq-message-size message)
+  (zmq_msg_size message))
 
 (define (zmq-message-content message)
   (let ((content-ptr (zmq_msg_data message)))
