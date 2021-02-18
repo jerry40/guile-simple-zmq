@@ -202,7 +202,7 @@
 (define zmq_ctx_set    (import-func int "zmq_ctx_set"    (list '* int int) #t))
 (define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
 (define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
-(define zmq_msg_size   (import-func int "zmq_msg_size"   (list '*)           #f))
+(define zmq_msg_size   (import-func size_t "zmq_msg_size"   (list '*)           #f))
 (define zmq_msg_init   (import-func int "zmq_msg_init"   (list '*)           #f))
 (define zmq_msg_gets   (import-func '*  "zmq_msg_gets"   (list '* '*)        #t))
 (define zmq_msg_recv   (import-func int "zmq_msg_recv"   (list '* '* int)    #t))
