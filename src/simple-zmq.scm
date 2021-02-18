@@ -224,6 +224,12 @@
     (format port "#<zmq-context ~a>"
             (number->string (object-address context) 16))))
 
+(define-wrapped-pointer-type <zmq-message> zmq-message?
+  pointer->message message->pointer
+  (lambda (message port)
+    (format port "#<zmq-message ~a>"
+            (number->string (object-address message) 16))))
+
 (define-wrapped-pointer-type <zmq-socket> zmq-socket?
   pointer->socket socket->pointer
   (lambda (socket port)
@@ -438,16 +444,17 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 (define %zmq-message-close
   (zmq->pointer "zmq_msg_close"))
 
-(define (set-message-finalizer! message)
-  (set-pointer-finalizer! message %zmq-message-close)
-  message)
+(define (pointer->message! pointer)
+  (set-pointer-finalizer! pointer %zmq-message-close)
+  (pointer->message pointer))
 
 (define (zmq-msg-init)
-  (let* ((zmq-msg-ptr (bytevector->pointer (make-bytevector 40)))
-         (result (zmq_msg_init zmq-msg-ptr)))
+  (let* ((message (make-bytevector BUF-SIZE))
+         (msg-pointer (bytevector->pointer message))
+         (result (zmq_msg_init msg-pointer)))
     (if (not (= result 0))
         (zmq-get-error-msg "Function zmq-msg-init failed.")
-        (set-message-finalizer! zmq-msg-ptr))))
+        (pointer->message! msg-pointer))))
 
 (define (zmq-get-socket-option socket option)
   (let* ((value-size (if (= option ZMQ_TYPE)      ;TODO: Add more types.
@@ -488,14 +495,16 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 
 (define (zmq-message-gets message property)
   (let-values (((result errno)
-                (zmq_msg_gets message (string->pointer property))))
+                (zmq_msg_gets (message->pointer message)
+                              (string->pointer property))))
     (if (null-pointer? result)
         (zmq-get-error errno)
         (pointer->string result))))
 
 (define (zmq-message-send socket message)
   (let-values (((result errno)
-                (zmq_msg_send message (socket->pointer socket) 0)))
+                (zmq_msg_send (message->pointer message)
+                              (socket->pointer socket) 0)))
     (if (= result -1)
 	(zmq-get-error errno))))
 
@@ -537,7 +546,7 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 
 (define (zmq-message-receive socket)
   (let*-values (((message) (zmq-msg-init))
-                ((result errno) (zmq_msg_recv message
+                ((result errno) (zmq_msg_recv (message->pointer message)
                                               (socket->pointer socket) 0)))
     (if (= result -1)
         (zmq-get-error errno)
@@ -547,14 +556,15 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
               (list message))))))
 
 (define (zmq-message-size message)
-  (zmq_msg_size message))
+  (zmq_msg_size (message->pointer message)))
 
 (define (zmq-message-content message)
-  (let ((content-ptr (zmq_msg_data message))
+  (let ((content-ptr (zmq_msg_data (message->pointer message)))
         (size (zmq-message-size message)))
     (if (null-pointer? content-ptr)
         (zmq-get-error-msg "Function zmq-message-content failed.")
-        (pointer->bytevector content-ptr size))))
+        (bytevector-copy
+         (pointer->bytevector content-ptr size)))))
 
 ;;
 ;; Message parts.
