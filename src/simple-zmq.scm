@@ -35,6 +35,7 @@
             zmq-set-msg-encoding
             zmq-create-context
             zmq-destroy-context
+            zmq-get-context-option
             zmq-set-context-option
             zmq-create-socket
             zmq-close-socket
@@ -200,6 +201,7 @@
 (define zmq_connect    (import-func int "zmq_connect"    (list '* '*) #t))
 (define zmq_ctx_new    (import-func '*  "zmq_ctx_new"    '()          #t))
 (define zmq_ctx_term   (import-func int "zmq_ctx_term"   (list '*)    #t))
+(define zmq_ctx_get    (import-func int "zmq_ctx_get"    (list '* int) #t))
 (define zmq_ctx_set    (import-func int "zmq_ctx_set"    (list '* int int) #t))
 (define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
 (define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
@@ -405,6 +407,14 @@ ASCII etc."
   (let-values (((result errno) (zmq_ctx_term (context->pointer context))))
     (if (not (= result 0))
         (zmq-get-error errno))))
+
+(define (zmq-get-context-option context option)
+  "Get the value of OPTION within the given CONTEXT."
+  (let-values (((result errno)
+                (zmq_ctx_get (context->pointer context) option)))
+    (if (< result 0)
+        (zmq-get-error errno)
+        result)))
 
 (define (zmq-set-context-option context option value)
   "Set the OPTION of CONTEXT to VALUE.  OPTION must be an integer such as
