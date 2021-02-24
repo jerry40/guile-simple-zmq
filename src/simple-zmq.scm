@@ -178,6 +178,10 @@
 
 (define zmq (dynamic-link "libzmq"))
 
+;; The size of the zmq_msg_t structure.
+(define %message-size
+  (make-parameter #f))
+
 (define (zmq->pointer name)
   (catch #t
     (lambda ()
@@ -403,7 +407,10 @@ ASCII etc."
   (let-values (((context errno) (zmq_ctx_new)))
     (if (null-pointer? context)
         (zmq-get-error errno)
-        (pointer->context context))))
+        (let* ((ctx (pointer->context context))
+               (size (zmq-get-context-option ctx ZMQ_MSG_T_SIZE)))
+          (%message-size size)
+          ctx))))
 
 (define (zmq-destroy-context context)
   (let-values (((result errno) (zmq_ctx_term (context->pointer context))))
@@ -463,7 +470,7 @@ ASCII etc."
   (pointer->message pointer))
 
 (define (zmq-msg-init)
-  (let* ((message (make-bytevector BUF-SIZE))
+  (let* ((message (make-bytevector (%message-size)))
          (msg-pointer (bytevector->pointer message))
          (result (zmq_msg_init msg-pointer)))
     (if (not (= result 0))
