@@ -176,7 +176,9 @@
 (define BUF-SIZE 4096)
 (define MSG-ENCODING "UTF8")
 
-(define zmq (dynamic-link "libzmq"))
+(define %libzmq "@LIBZMQ_LIBDIR@/libzmq")
+
+(define zmq (dynamic-link %libzmq))
 
 ;; The size of the zmq_msg_t structure.
 (define %message-size
