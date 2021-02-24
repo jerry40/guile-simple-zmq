@@ -87,6 +87,7 @@
 
             ZMQ_IO_THREADS
             ZMQ_MAX_SOCKETS
+            ZMQ_MSG_T_SIZE
 
             ZMQ_AFFINITY
             ZMQ_IDENTITY
@@ -275,6 +276,7 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 ;; context options
 (define ZMQ_IO_THREADS  1)
 (define ZMQ_MAX_SOCKETS 2)
+(define ZMQ_MSG_T_SIZE  6)
 
 ;; socket options
 (define ZMQ_AFFINITY                 4)
