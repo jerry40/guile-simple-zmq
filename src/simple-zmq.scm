@@ -586,8 +586,7 @@ ASCII etc."
         (size (zmq-message-size message)))
     (if (null-pointer? content-ptr)
         (zmq-get-error-msg "Function zmq-message-content failed.")
-        (bytevector-copy
-         (pointer->bytevector content-ptr size)))))
+        (pointer->bytevector content-ptr size))))
 
 ;;
 ;; Message parts.
