@@ -6,10 +6,10 @@
 ;;;
 ;;; This file is part of Guile-Simple-ZMQ.
 ;;;
-;;; Guile-Simple-ZMQ is free software; you can redistribute it and/or modify it
-;;; under the terms of the GNU General Public License as published by
-;;; the Free Software Foundation; either version 3 of the License, or (at
-;;; your option) any later version.
+;;; Guile-Simple-ZMQ is free software; you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by the
+;;; Free Software Foundation; either version 3 of the License, or (at your
+;;; option) any later version.
 ;;;
 ;;; Guile-Simple-ZMQ is distributed in the hope that it will be useful, but
 ;;; WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -87,12 +87,12 @@
             ZMQ_IO_THREADS
             ZMQ_MAX_SOCKETS
 
-            ZMQ_AFFINITY                 
-            ZMQ_IDENTITY                 
-            ZMQ_SUBSCRIBE                
-            ZMQ_UNSUBSCRIBE              
-            ZMQ_RATE                     
-            ZMQ_RECOVERY_IVL             
+            ZMQ_AFFINITY
+            ZMQ_IDENTITY
+            ZMQ_SUBSCRIBE
+            ZMQ_UNSUBSCRIBE
+            ZMQ_RATE
+            ZMQ_RECOVERY_IVL
             ZMQ_SNDBUF
             ZMQ_RCVBUF
             ZMQ_RCVMORE
@@ -373,7 +373,8 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
   MSG-ENCODING)
 
 (define (zmq-set-msg-encoding new-encoding)
-  "Change encoding that used in bytevectors <-> string transformations. UTF8, ASCII etc"
+  "Change encoding that used in bytevectors <-> string transformations: UTF8,
+ASCII etc."
   (set! MSG-ENCODING new-encoding))
 
 ;;
@@ -397,13 +398,13 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 (define (zmq-create-context)
   (let-values (((context errno) (zmq_ctx_new)))
     (if (null-pointer? context)
-	(zmq-get-error errno)
-	(pointer->context context))))
+        (zmq-get-error errno)
+        (pointer->context context))))
 
 (define (zmq-destroy-context context)
   (let-values (((result errno) (zmq_ctx_term (context->pointer context))))
     (if (not (= result 0))
-	(zmq-get-error errno))))
+        (zmq-get-error errno))))
 
 (define (zmq-set-context-option context option value)
   "Set the OPTION of CONTEXT to VALUE.  OPTION must be an integer such as
@@ -417,30 +418,30 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
   (let-values (((socket errno) (zmq_socket (context->pointer context) type)))
     (if (null-pointer? socket)
         (zmq-get-error errno)
-	(pointer->socket socket))))
+        (pointer->socket socket))))
 
 (define (zmq-close-socket socket)
   (let-values (((result errno) (zmq_close (socket->pointer socket))))
     (if (not (= result 0))
-	(zmq-get-error errno))))
+        (zmq-get-error errno))))
 
 (define (zmq-bind-socket socket address)
   (let-values (((result errno) (zmq_bind (socket->pointer socket)
                                          (string->pointer address))))
     (if (not (= result 0))
-	(zmq-get-error errno))))
+        (zmq-get-error errno))))
 
 (define (zmq-unbind-socket socket address)
   (let-values (((result errno) (zmq_unbind (socket->pointer socket)
                                            (string->pointer address))))
     (if (not (= result 0))
-	(zmq-get-error errno))))
+        (zmq-get-error errno))))
 
 (define (zmq-connect socket address)
   (let-values (((result errno) (zmq_connect (socket->pointer socket)
                                             (string->pointer address))))
     (if (not (= result 0))
-	(zmq-get-error errno))))
+        (zmq-get-error errno))))
 
 (define %zmq-message-close
   (zmq->pointer "zmq_msg_close"))
@@ -462,7 +463,7 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
                          (sizeof int)
                          (sizeof size_t)))
          (opt        (make-bytevector value-size))
-	 (size       (make-bytevector (sizeof size_t))))
+         (size       (make-bytevector (sizeof size_t))))
     (bytevector-uint-set! size 0 value-size
                           (native-endianness) (sizeof size_t))
     (let-values (((result errno) (zmq_getsockopt (socket->pointer socket)
@@ -470,8 +471,8 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
                                                  (bytevector->pointer opt)
                                                  (bytevector->pointer size))))
       (if (= result -1)
-	  (zmq-get-error errno)
-	  (bytevector-uint-ref opt 0 (native-endianness) value-size)))))
+          (zmq-get-error errno)
+          (bytevector-uint-ref opt 0 (native-endianness) value-size)))))
 
 (define (zmq-set-socket-option socket option value)
   (define (value->type+length value)
@@ -507,7 +508,7 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
                 (zmq_msg_send (message->pointer message)
                               (socket->pointer socket) 0)))
     (if (= result -1)
-	(zmq-get-error errno))))
+        (zmq-get-error errno))))
 
 (define (zmq-receive-bytevector socket len)
   (let  ((buffer (make-bytevector len 0)))
@@ -515,16 +516,18 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
                                            (bytevector->pointer buffer)
                                            len 0)))
       (cond
-       ((and (< result 0) (= errno 4)) (zmq-receive-bytevector socket len)) ;; apparently after getting EINTR error, socket should be read again
+       ;; Apparently after getting EINTR error, socket should be read again.
+       ((and (< result 0) (= errno 4)) (zmq-receive-bytevector socket len))
        ((< result 0) (zmq-get-error errno))
        ((= result 0) (make-bytevector 0))
        (else
-	(let ((ret-length (min len result)))
-	  (if (< ret-length len)
-	      (let ((ret (make-bytevector ret-length))) ;; create a bytevector having a length of received message
-	        (bytevector-copy! buffer 0 ret 0 ret-length)
-		ret)
-	      buffer)))))))
+        (let ((ret-length (min len result)))
+          (if (< ret-length len)
+              ;; Create a bytevector having a length of received message.
+              (let ((ret (make-bytevector ret-length)))
+                (bytevector-copy! buffer 0 ret 0 ret-length)
+                ret)
+              buffer)))))))
 
 (define (zmq-receive socket len)
   (let  ((buffer (zmq-receive-bytevector socket len)))
@@ -582,9 +585,9 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 (define (zmq-send-msg-parts-bytevector socket parts)
   (if (not (null? parts))
       (let* ((data (car parts))
-	     (flag  (if (> (length parts) 1) ZMQ_SNDMORE 0)))
-	(zmq-send-bytevector socket data flag)
-	(zmq-send-msg-parts-bytevector socket (cdr parts)))))
+             (flag  (if (> (length parts) 1) ZMQ_SNDMORE 0)))
+        (zmq-send-bytevector socket data flag)
+        (zmq-send-msg-parts-bytevector socket (cdr parts)))))
 
 (define* (zmq-get-msg-parts socket #:optional (parts '()))
   (bv-list->string-list
