@@ -2,6 +2,7 @@
 ;;; Copyright © 2018 Evgeny Panfilov <epanfilov@gmail.com>
 ;;; Copyright © 2018 Pierre-Antoine Rouby <contact@parouby.fr>
 ;;; Copyright © 2018, 2019 Ludovic Courtès <ludo@gnu.org>
+;;; Copyright © 2020, 2021 Mathieu Othacehe <othacehe@gnu.org>
 ;;;
 ;;; This file is part of Guile-Simple-ZMQ.
 ;;;
