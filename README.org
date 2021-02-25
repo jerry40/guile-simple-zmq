@@ -1,0 +1,99 @@
+* Guile-Simple-ZMQ
+
+Guile-Simple-ZMQ is a GNU Guile library providing bindings to [[https://zeromq.org/][ZMQ]].
+
+Copyright © 2018 Evgeny Panfilov <epanfilov@gmail.com>
+Copyright © 2020, 2021 Mathieu Othacehe <othacehe@gnu.org>
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.  This file is offered as-is,
+without any warranty.
+
+** Requirements
+
+Guile-Simple-ZMQ requires the following to be installed:
+
+- [[https://www.gnu.org/software/guile/][GNU Guile]] >= 2.0.11
+- [[https://zeromq.org/][ZMQ]]
+
+** Installation
+
+Guile-Simple-ZMQ uses GNU autotools to create the build and installation
+scripts. The default install location is in `/usr/local`. From a
+release tarball you can run:
+
+#+BEGIN_SRC sh
+./configure
+make
+sudo make install
+#+END_SRC
+
+This will install Guile-Simple-ZMQ with the prefix `/usr/local/`. This
+might not be the default load path for your GNU Guile. You may choose
+to change the prefix to your GNU Guile's location with `./configure
+--prefix=/usr` or add `/usr/local/` to GNU Guile's load path in your
+`.profile` or `.bash_profile` like this (replacing 2.2 with your GNU
+Guile major version):
+
+#+BEGIN_SRC sh
+export GUILE_LOAD_PATH="/usr/local/share/guile/site/2.2${GUILE_LOAD_PATH:+:}$GUILE_LOAD_PATH"
+export GUILE_LOAD_COMPILED_PATH="/usr/local/lib/guile/2.2/site-ccache${GUILE_LOAD_COMPILED_PATH:+:}$GUILE_COMPILED_LOAD_PATH"
+#+END_SRC
+
+A common issue you may encounter when installing, especially on Ubuntu
+and Fedora, is guild not being found when you run `configure`. This
+happens because the configure script finds a symbolic link to a
+version of guile with a version number, like guile-2.2. This then has
+the configure script check for guild-2.2 which does not exist. To fix
+this, you can provide the path to the version of guile you want to
+install it for.
+
+#+BEGIN_SRC sh
+./configure GUILE=$(which guile)
+#+END_SRC
+
+** Contributing
+
+The easiest way to start hacking on Guile-Simple-ZMQ is to install [[https://gnu.org/s/guix][GNU Guix]]
+and run the following command:
+
+#+BEGIN_SRC sh
+guix environment guile-simple-zmq
+#+END_SRC
+
+To build from git:
+
+#+BEGIN_SRC sh
+./bootstrap
+./configure
+make
+#+END_SRC
+
+To run the unit tests:
+
+#+BEGIN_SRC sh
+make check
+#+END_SRC
+
+You can then:
+
+- Create a pull request on github
+- Send a patch to one of the maintainers
+
+And don't forget to add a unit test!
+
+** Example
+A server waits for a client message and answers to it. They are being executed
+in parallel in the two different Jupyter Notebooks sessions.
+
+The server:
+[[guile-zmq-server.png]]
+
+The client:
+[[guile-zmq-client.png]]
+
+** License
+Guile-Simple-ZMQ is licenced under GPLv3 or later. See COPYING file for
+details.
+
