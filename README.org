@@ -2,7 +2,7 @@
 
 Guile-Simple-ZMQ is a GNU Guile library providing bindings to [[https://zeromq.org/][ZMQ]].
 
-Copyright © 2018 Evgeny Panfilov <epanfilov@gmail.com>
+Copyright © 2018 Evgeny Panfilov <epanfilov@gmail.com>\\
 Copyright © 2020, 2021 Mathieu Othacehe <othacehe@gnu.org>
 
 Copying and distribution of this file, with or without modification,
