@@ -67,10 +67,11 @@ retries a call to PROC."
 
   (let loop ((i 1))
     (unless (> i test-iterations)
-      (zmq-send-msg-parts-bytevector
+      (zmq-message-send-parts
        send-socket
-       (list (string->bv (number->string i))
-             (string->bv "test")))
+       (map zmq-msg-init
+            (list (string->bv (number->string i))
+                  (string->bv "test"))))
       (loop (+ i 1))))
 
   (zmq-close-socket send-socket))
