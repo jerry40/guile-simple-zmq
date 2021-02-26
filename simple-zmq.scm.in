@@ -561,8 +561,11 @@ ASCII etc."
   (let-values (((result errno)
                 (zmq_msg_send (message->pointer message)
                               (socket->pointer socket) 0)))
-    (if (= result -1)
-        (zmq-get-error errno))))
+    (cond
+     ((and (< result 0) (= errno 4))
+      (zmq-message-send socket message))
+     ((< result 0)
+      (zmq-get-error errno)))))
 
 (define (zmq-receive-bytevector socket len)
   (let  ((buffer (make-bytevector len 0)))
