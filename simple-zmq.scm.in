@@ -43,6 +43,7 @@
             zmq-unbind-socket
             zmq-connect
             zmq-msg-init
+            zmq-msg-init-size
             zmq-get-socket-option
             zmq-message-gets
             zmq-message-send
@@ -225,6 +226,8 @@
  (import-func size_t "zmq_msg_size" (list '*) #f))
 (define zmq_msg_init
  (import-func int "zmq_msg_init" (list '*) #f))
+(define zmq_msg_init_size
+ (import-func int "zmq_msg_init_size" (list '* size_t) #t))
 (define zmq_msg_gets
  (import-func '* "zmq_msg_gets" (list '* '*) #t))
 (define zmq_msg_recv
@@ -497,6 +500,14 @@ ASCII etc."
   (let* ((message (make-bytevector (%message-size)))
          (msg-pointer (bytevector->pointer message))
          (result (zmq_msg_init msg-pointer)))
+    (if (not (= result 0))
+        (zmq-get-error-msg "Function zmq-msg-init failed.")
+        (pointer->message! msg-pointer))))
+
+(define (zmq-msg-init-size size)
+  (let* ((message (make-bytevector (%message-size)))
+         (msg-pointer (bytevector->pointer message))
+         (result (zmq_msg_init_size msg-pointer size)))
     (if (not (= result 0))
         (zmq-get-error-msg "Function zmq-msg-init failed.")
         (pointer->message! msg-pointer))))
