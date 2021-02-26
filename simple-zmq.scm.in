@@ -46,6 +46,7 @@
             zmq-get-socket-option
             zmq-message-gets
             zmq-message-send
+            zmq-message-send-parts
             zmq-message-receive
             zmq-receive
             zmq-send
@@ -411,9 +412,10 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 ASCII etc."
   (set! MSG-ENCODING new-encoding))
 
-;;
-;; Error.
-;;
+
+;;;
+;;; Error.
+;;;
 
 (define (zmq-get-strerror errno)
   (pointer->string (zmq_strerror errno)))
@@ -425,9 +427,10 @@ ASCII etc."
 (define (zmq-get-error-msg msg)
   (throw 'zmq-error `(0 ,msg)))
 
-;;
-;; ZMQ API.
-;;
+
+;;;
+;;; ZMQ API.
+;;;
 
 (define (zmq-create-context)
   (let-values (((context errno) (zmq_ctx_new)))
@@ -488,31 +491,6 @@ ASCII etc."
     (if (not (= result 0))
         (zmq-get-error errno))))
 
-(define %zmq-message-close
-  (zmq->pointer "zmq_msg_close"))
-
-(define (pointer->message! pointer)
-  (set-pointer-finalizer! pointer %zmq-message-close)
-  (pointer->message pointer))
-
-(define* (zmq-msg-init #:optional content-bv)
-  "Return a new ZMQ message that is optionally initialized with CONTENT-BV
-bytevector content.  The message will be closed using the above pointer
-finalizer when the returned message goes out of scope."
-  (let* ((message (make-bytevector (%message-size)))
-         (msg-pointer (bytevector->pointer message))
-         (len (and content-bv (bytevector-length content-bv)))
-         (result (if content-bv
-                     (zmq_msg_init_size msg-pointer len)
-                     (zmq_msg_init msg-pointer))))
-    (if (not (= result 0))
-        (zmq-get-error-msg "Function zmq-msg-init failed.")
-        (let ((msg (pointer->message! msg-pointer)))
-          (when content-bv
-            (let ((target (zmq-message-content msg)))
-              (bytevector-copy! content-bv 0 target 0 len)))
-          msg))))
-
 (define (zmq-get-socket-option socket option)
   (let* ((value-size (if (= option ZMQ_TYPE)      ;TODO: Add more types.
                          (sizeof int)
@@ -550,6 +528,46 @@ finalizer when the returned message goes out of scope."
     (when (= result -1)
       (zmq-get-error errno))))
 
+
+;;;
+;;; Message API.
+;;;
+
+(define %zmq-message-close
+  (zmq->pointer "zmq_msg_close"))
+
+(define (pointer->message! pointer)
+  (set-pointer-finalizer! pointer %zmq-message-close)
+  (pointer->message pointer))
+
+(define* (zmq-msg-init #:optional content-bv)
+  "Return a new ZMQ message that is optionally initialized with CONTENT-BV
+bytevector content.  The message will be closed using the above pointer
+finalizer when the returned message goes out of scope."
+  (let* ((message (make-bytevector (%message-size)))
+         (msg-pointer (bytevector->pointer message))
+         (len (and content-bv (bytevector-length content-bv)))
+         (result (if content-bv
+                     (zmq_msg_init_size msg-pointer len)
+                     (zmq_msg_init msg-pointer))))
+    (if (not (= result 0))
+        (zmq-get-error-msg "Function zmq-msg-init failed.")
+        (let ((msg (pointer->message! msg-pointer)))
+          (when content-bv
+            (let ((target (zmq-message-content msg)))
+              (bytevector-copy! content-bv 0 target 0 len)))
+          msg))))
+
+(define (zmq-message-size message)
+  (zmq_msg_size (message->pointer message)))
+
+(define (zmq-message-content message)
+  (let ((content-ptr (zmq_msg_data (message->pointer message)))
+        (size (zmq-message-size message)))
+    (if (null-pointer? content-ptr)
+        (zmq-get-error-msg "Function zmq-message-content failed.")
+        (pointer->bytevector content-ptr size))))
+
 (define (zmq-message-gets message property)
   (let-values (((result errno)
                 (zmq_msg_gets (message->pointer message)
@@ -558,15 +576,33 @@ finalizer when the returned message goes out of scope."
         (zmq-get-error errno)
         (pointer->string result))))
 
-(define (zmq-message-send socket message)
+(define (zmq-message-receive socket)
+  (let*-values (((message) (zmq-msg-init))
+                ((result errno) (zmq_msg_recv (message->pointer message)
+                                              (socket->pointer socket) 0)))
+    (if (= result -1)
+        (zmq-get-error errno)
+        (let ((opt (zmq-get-socket-option socket ZMQ_RCVMORE)))
+          (if (> opt 0)
+              (cons message (zmq-message-receive socket))
+              (list message))))))
+
+(define* (zmq-message-send socket message
+                           #:optional (flag 0))
+  "Send MESSAGE on SOCKET with the optional FLAG."
   (let-values (((result errno)
                 (zmq_msg_send (message->pointer message)
-                              (socket->pointer socket) 0)))
+                              (socket->pointer socket) flag)))
     (cond
      ((and (< result 0) (= errno 4))
       (zmq-message-send socket message))
      ((< result 0)
       (zmq-get-error errno)))))
+
+
+;;;
+;;; Raw messages.
+;;;
 
 (define (zmq-receive-bytevector socket len)
   (let  ((buffer (make-bytevector len 0)))
@@ -606,31 +642,6 @@ finalizer when the returned message goes out of scope."
   (let*  ((buffer (string->bv data)))
     (zmq-send-bytevector socket buffer flag)))
 
-(define (zmq-message-receive socket)
-  (let*-values (((message) (zmq-msg-init))
-                ((result errno) (zmq_msg_recv (message->pointer message)
-                                              (socket->pointer socket) 0)))
-    (if (= result -1)
-        (zmq-get-error errno)
-        (let ((opt (zmq-get-socket-option socket ZMQ_RCVMORE)))
-          (if (> opt 0)
-              (cons message (zmq-message-receive socket))
-              (list message))))))
-
-(define (zmq-message-size message)
-  (zmq_msg_size (message->pointer message)))
-
-(define (zmq-message-content message)
-  (let ((content-ptr (zmq_msg_data (message->pointer message)))
-        (size (zmq-message-size message)))
-    (if (null-pointer? content-ptr)
-        (zmq-get-error-msg "Function zmq-message-content failed.")
-        (pointer->bytevector content-ptr size))))
-
-;;
-;; Message parts.
-;;
-
 (define* (zmq-get-msg-parts-bytevector socket #:optional (parts '()))
   (let* ((part      (zmq-receive-bytevector socket BUF-SIZE))
          (new-parts (append parts (list part)))
@@ -654,21 +665,31 @@ finalizer when the returned message goes out of scope."
   (let ((bv-parts (string-list->bv-list parts)))
     (zmq-send-msg-parts-bytevector socket bv-parts)))
 
-;; convert ascii string into bytevector
+
+;;;
+;;; Helpers.
+;;;
+
 (define (string->bv text)
+  "Convert ASCII string TEXT into a bytevector."
   (string->bytevector text MSG-ENCODING))
 
-;; convert bytevector into ascii string
 (define (bv->string bv)
+  "Convert the given BV bytevector into an ASCII string."
   (bytevector->string bv MSG-ENCODING))
 
-;; convert a list of strings to a list of bytevectors
 (define (string-list->bv-list str-list)
+  "Convert the list of strings STR-LIST to a list of bytevectors."
   (map string->bv str-list))
 
-;; convert a list of bytevectors to a list of strings
 (define (bv-list->string-list bv-list)
+  "Convert the list of bytevectors BV-LIST into a list of strings."
   (map bv->string bv-list))
+
+
+;;;
+;;; Polling.
+;;;
 
 (define %pollitem-struct
   ;; The 'zmq_pollitem_t' struct.
@@ -738,6 +759,11 @@ denoting the events that occurred."
     (if (>= result 0)
         (array->poll-items array length)
         (zmq-get-error errno))))
+
+
+;;;
+;;; Misc.
+;;;
 
 (define* (zmq-proxy frontend backend #:optional (capture #f))
   "Start built-in proxy connecting FRONTEND to BACKEND.  If CAPTURE socket is
