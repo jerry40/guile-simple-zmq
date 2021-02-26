@@ -203,33 +203,55 @@
         (error (format #f "~a: import-func failed: ~s"
                        name args))))))
 
-(define zmq_bind       (import-func int "zmq_bind"       (list '* '*) #t))
-(define zmq_close      (import-func int "zmq_close"      (list '*)    #t))
-(define zmq_connect    (import-func int "zmq_connect"    (list '* '*) #t))
-(define zmq_ctx_new    (import-func '*  "zmq_ctx_new"    '()          #t))
-(define zmq_ctx_term   (import-func int "zmq_ctx_term"   (list '*)    #t))
-(define zmq_ctx_get    (import-func int "zmq_ctx_get"    (list '* int) #t))
-(define zmq_ctx_set    (import-func int "zmq_ctx_set"    (list '* int int) #t))
-(define zmq_getsockopt (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
-(define zmq_msg_data   (import-func '*  "zmq_msg_data"   (list '*)           #f))
-(define zmq_msg_size   (import-func size_t "zmq_msg_size"   (list '*)           #f))
-(define zmq_msg_init   (import-func int "zmq_msg_init"   (list '*)           #f))
-(define zmq_msg_gets   (import-func '*  "zmq_msg_gets"   (list '* '*)        #t))
-(define zmq_msg_recv   (import-func int "zmq_msg_recv"   (list '* '* int)    #t))
-(define zmq_msg_send   (import-func int "zmq_msg_send"   (list '* '* int)    #t))
-(define zmq_recv       (import-func int "zmq_recv"       (list '* '* size_t int) #t))
-(define zmq_send       (import-func int "zmq_send"       (list '* '* size_t int) #t))
-(define zmq_setsockopt (import-func int "zmq_setsockopt" (list '* int '* size_t) #t))
-(define zmq_socket     (import-func '*  "zmq_socket"     (list '* int) #t))
-(define zmq_strerror   (import-func '*  "zmq_strerror"   (list int)    #f))
-(define zmq_unbind     (import-func int "zmq_unbind"     (list '* '*)  #t))
-(define zmq_poll       (import-func int "zmq_poll"       (list '* int long) #t))
-(define zmq_proxy      (import-func int "zmq_proxy"      (list '* '* '*) #t))
+(define zmq_bind
+ (import-func int "zmq_bind" (list '* '*) #t))
+(define zmq_close
+ (import-func int "zmq_close" (list '*) #t))
+(define zmq_connect
+ (import-func int "zmq_connect" (list '* '*) #t))
+(define zmq_ctx_new
+ (import-func '* "zmq_ctx_new" '() #t))
+(define zmq_ctx_term
+ (import-func int "zmq_ctx_term" (list '*) #t))
+(define zmq_ctx_get
+ (import-func int "zmq_ctx_get" (list '* int) #t))
+(define zmq_ctx_set
+ (import-func int "zmq_ctx_set" (list '* int int) #t))
+(define zmq_getsockopt
+ (import-func int "zmq_getsockopt" (list '* int '* '*) #t))
+(define zmq_msg_data
+ (import-func '* "zmq_msg_data" (list '*) #f))
+(define zmq_msg_size
+ (import-func size_t "zmq_msg_size" (list '*) #f))
+(define zmq_msg_init
+ (import-func int "zmq_msg_init" (list '*) #f))
+(define zmq_msg_gets
+ (import-func '* "zmq_msg_gets" (list '* '*) #t))
+(define zmq_msg_recv
+ (import-func int "zmq_msg_recv" (list '* '* int) #t))
+(define zmq_msg_send
+ (import-func int "zmq_msg_send" (list '* '* int) #t))
+(define zmq_recv
+ (import-func int "zmq_recv" (list '* '* size_t int) #t))
+(define zmq_send
+ (import-func int "zmq_send" (list '* '* size_t int) #t))
+(define zmq_setsockopt
+ (import-func int "zmq_setsockopt" (list '* int '* size_t) #t))
+(define zmq_socket
+ (import-func '* "zmq_socket" (list '* int) #t))
+(define zmq_strerror
+ (import-func '* "zmq_strerror" (list int) #f))
+(define zmq_unbind
+ (import-func int "zmq_unbind" (list '* '*) #t))
+(define zmq_poll
+ (import-func int "zmq_poll" (list '* int long) #t))
+(define zmq_proxy
+ (import-func int "zmq_proxy" (list '* '* '*) #t))
 
 ;; Data types.
 
 (define-wrapped-pointer-type <zmq-context> zmq-context?
-  pointer->context context->pointer
+ pointer->context context->pointer
   (lambda (context port)
     (format port "#<zmq-context ~a>"
             (number->string (object-address context) 16))))
