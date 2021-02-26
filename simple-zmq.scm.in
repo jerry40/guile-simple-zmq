@@ -601,7 +601,7 @@ finalizer when the returned message goes out of scope."
 
 (define (zmq-message-send-parts socket parts)
   "Send the list of messages in PARTS on SOCKET."
-  (match (pk parts)
+  (match parts
     (() #f)
     ((first . rest)
      (let ((flag (if (> (length parts) 1) ZMQ_SNDMORE 0)))
