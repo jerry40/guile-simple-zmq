@@ -43,7 +43,6 @@
             zmq-unbind-socket
             zmq-connect
             zmq-msg-init
-            zmq-msg-init-size
             zmq-get-socket-option
             zmq-message-gets
             zmq-message-send
@@ -496,21 +495,23 @@ ASCII etc."
   (set-pointer-finalizer! pointer %zmq-message-close)
   (pointer->message pointer))
 
-(define (zmq-msg-init)
+(define* (zmq-msg-init #:optional content-bv)
+  "Return a new ZMQ message that is optionally initialized with CONTENT-BV
+bytevector content.  The message will be closed using the above pointer
+finalizer when the returned message goes out of scope."
   (let* ((message (make-bytevector (%message-size)))
          (msg-pointer (bytevector->pointer message))
-         (result (zmq_msg_init msg-pointer)))
+         (len (and content-bv (bytevector-length content-bv)))
+         (result (if content-bv
+                     (zmq_msg_init_size msg-pointer len)
+                     (zmq_msg_init msg-pointer))))
     (if (not (= result 0))
         (zmq-get-error-msg "Function zmq-msg-init failed.")
-        (pointer->message! msg-pointer))))
-
-(define (zmq-msg-init-size size)
-  (let* ((message (make-bytevector (%message-size)))
-         (msg-pointer (bytevector->pointer message))
-         (result (zmq_msg_init_size msg-pointer size)))
-    (if (not (= result 0))
-        (zmq-get-error-msg "Function zmq-msg-init failed.")
-        (pointer->message! msg-pointer))))
+        (let ((msg (pointer->message! msg-pointer)))
+          (when content-bv
+            (let ((target (zmq-message-content msg)))
+              (bytevector-copy! content-bv 0 target 0 len)))
+          msg))))
 
 (define (zmq-get-socket-option socket option)
   (let* ((value-size (if (= option ZMQ_TYPE)      ;TODO: Add more types.

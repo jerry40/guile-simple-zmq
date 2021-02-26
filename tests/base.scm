@@ -52,10 +52,10 @@ retries a call to PROC."
   (positive?
    (zmq-get-context-option %zmq-context ZMQ_MSG_T_SIZE)))
 
-(test-equal "msg-init-size"
-  5
-  (let ((msg (zmq-msg-init-size 5)))
-    (zmq-message-size msg)))
+(test-equal "msg-init"
+  "alice"
+  (let ((msg (zmq-msg-init (string->bv "alice"))))
+    (bv->string (zmq-message-content msg))))
 
 (define test-iterations 2)
 
