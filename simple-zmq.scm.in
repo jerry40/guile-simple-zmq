@@ -43,6 +43,7 @@
             zmq-unbind-socket
             zmq-connect
             zmq-msg-init
+            zmq-msg-close
             zmq-get-socket-option
             zmq-message-gets
             zmq-message-send
@@ -228,6 +229,8 @@
  (import-func int "zmq_msg_init" (list '*) #f))
 (define zmq_msg_init_size
  (import-func int "zmq_msg_init_size" (list '* size_t) #t))
+(define zmq_msg_close
+ (import-func int "zmq_msg_close" (list '*) #t))
 (define zmq_msg_gets
  (import-func '* "zmq_msg_gets" (list '* '*) #t))
 (define zmq_msg_recv
@@ -533,12 +536,15 @@ ASCII etc."
 ;;; Message API.
 ;;;
 
-(define %zmq-message-close
-  (zmq->pointer "zmq_msg_close"))
-
-(define (pointer->message! pointer)
-  (set-pointer-finalizer! pointer %zmq-message-close)
-  (pointer->message pointer))
+;; Create a guardian so that messages can be closed before being garbage
+;; collected.
+(define message-guardian (make-guardian))
+(define (pump-message-guardian)
+  (let ((message (message-guardian)))
+    (when message
+      (zmq-msg-close message)
+      (pump-message-guardian))))
+(add-hook! after-gc-hook pump-message-guardian)
 
 (define* (zmq-msg-init #:optional content-bv)
   "Return a new ZMQ message that is optionally initialized with CONTENT-BV
@@ -552,11 +558,18 @@ finalizer when the returned message goes out of scope."
                      (zmq_msg_init msg-pointer))))
     (if (not (= result 0))
         (zmq-get-error-msg "Function zmq-msg-init failed.")
-        (let ((msg (pointer->message! msg-pointer)))
+        (let ((msg (pointer->message msg-pointer)))
           (when content-bv
             (let ((target (zmq-message-content msg)))
               (bytevector-copy! content-bv 0 target 0 len)))
+          (message-guardian msg)
           msg))))
+
+(define (zmq-msg-close message)
+  (let-values (((result errno)
+                (zmq_msg_close (message->pointer message))))
+    (or (= result 0)
+        (zmq-get-error errno))))
 
 (define (zmq-message-size message)
   (zmq_msg_size (message->pointer message)))
