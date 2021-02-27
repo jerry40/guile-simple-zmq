@@ -76,24 +76,24 @@ retries a call to PROC."
 
   (zmq-close-socket send-socket))
 
-(define (test-receiver)
-  (let* ((recv-socket (zmq-create-socket %zmq-context ZMQ_PULL))
-         (connect (zmq-connect recv-socket zmq-endpoint))
-         (poll-items (list (poll-item recv-socket ZMQ_POLLIN))))
+(define (test-receiver socket)
+  (let* ((connect (zmq-connect socket zmq-endpoint))
+         (poll-items (list (poll-item socket ZMQ_POLLIN))))
     (gc)
     (let loop ((i 1)
                (messages '()))
       (if (> i test-iterations)
-          (begin
-            (zmq-close-socket recv-socket)
-            messages)
+          messages
           (let* ((items (zmq-poll* poll-items 1000))
-                 (messages* (zmq-message-receive recv-socket)))
+                 (messages* (zmq-message-receive socket)))
             (gc)
             (loop (1+ i)
                   (append messages
                           (map (compose bv->string zmq-message-content)
                                messages*))))))))
+
+(define %recv-socket
+  (zmq-create-socket %zmq-context ZMQ_PULL))
 
 (test-equal "messages"
   '("1" "test" "2" "test")
@@ -101,8 +101,17 @@ retries a call to PROC."
     (call-with-new-thread
      (lambda ()
        (test-sender)))
-    (test-receiver)))
+    (test-receiver %recv-socket)))
 
+(test-equal "get-socket-option TYPE"
+  ZMQ_PULL
+  (zmq-get-socket-option %recv-socket ZMQ_TYPE))
+
+(test-equal "get-socket-option ENDPOINT"
+  zmq-endpoint
+  (zmq-get-socket-option %recv-socket ZMQ_LAST_ENDPOINT))
+
+(zmq-close-socket %recv-socket)
 (zmq-destroy-context %zmq-context)
 
 (test-end)

@@ -495,9 +495,14 @@ ASCII etc."
         (zmq-get-error errno))))
 
 (define (zmq-get-socket-option socket option)
-  (let* ((value-size (if (= option ZMQ_TYPE)      ;TODO: Add more types.
-                         (sizeof int)
-                         (sizeof size_t)))
+  "Return the value of OPTION for the given SOCKET."
+  (define (read-uint value size)
+    (bytevector-uint-ref value 0 (native-endianness) size))
+
+  (let* ((value-size (cond
+                      ((eq? ZMQ_TYPE option) (sizeof int))
+                      ((eq? ZMQ_LAST_ENDPOINT option) BUF-SIZE)
+                      (else (sizeof size_t))))
          (opt        (make-bytevector value-size))
          (size       (make-bytevector (sizeof size_t))))
     (bytevector-uint-set! size 0 value-size
@@ -508,7 +513,13 @@ ASCII etc."
                                                  (bytevector->pointer size))))
       (if (= result -1)
           (zmq-get-error errno)
-          (bytevector-uint-ref opt 0 (native-endianness) value-size)))))
+          (let ((len (read-uint size (sizeof size_t))))
+            (cond
+             ((eq? ZMQ_LAST_ENDPOINT option)
+              (let ((new-bv (make-bytevector (1- len))))
+                (bytevector-copy! opt 0 new-bv 0 (1- len))
+                (bv->string new-bv)))
+             (else (read-uint opt len))))))))
 
 (define (zmq-set-socket-option socket option value)
   (define (value->type+length value)
