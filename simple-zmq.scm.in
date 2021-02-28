@@ -164,6 +164,9 @@
             ZMQ_VMCI_BUFFER_MAX_SIZE
             ZMQ_VMCI_CONNECT_TIMEOUT
             ZMQ_USE_FD
+            ZMQ_BINDTODEVICE
+            ZMQ_GSSAPI_PRINCIPAL_NAMETYPE
+            ZMQ_GSSAPI_SERVICE_PRINCIPAL_NAMETYPE
 
             ZMQ_MORE
             ZMQ_SHARED
@@ -386,6 +389,9 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 (define ZMQ_VMCI_BUFFER_MAX_SIZE     87)
 (define ZMQ_VMCI_CONNECT_TIMEOUT     88)
 (define ZMQ_USE_FD                   89)
+(define ZMQ_GSSAPI_PRINCIPAL_NAMETYPE 90)
+(define ZMQ_GSSAPI_SERVICE_PRINCIPAL_NAMETYPE 91)
+(define ZMQ_BINDTODEVICE 92)
 
 ;; zmq message options
 (define ZMQ_MORE   1)
@@ -497,11 +503,21 @@ ASCII etc."
   (define (read-uint value size)
     (bytevector-uint-ref value 0 (native-endianness) size))
 
-  (let* ((value-size (cond
-                      ((eq? ZMQ_TYPE option) (sizeof int))
-                      ((eq? ZMQ_LAST_ENDPOINT option) BUF-SIZE)
+  (let* ((string-result?
+          (member option (list
+                          ZMQ_LAST_ENDPOINT
+                          ZMQ_SOCKS_PROXY
+                          ZMQ_PLAIN_USERNAME
+                          ZMQ_BINDTODEVICE)))
+         (int-result?
+          (member option (list
+                          ZMQ_TYPE
+                          ZMQ_SNDBUF
+                          ZMQ_RCVBUF)))
+         (value-size (cond
+                      (string-result? BUF-SIZE)
+                      (int-result? (sizeof int))
                       (else (sizeof size_t))))
-         (string-result? (member option (list ZMQ_LAST_ENDPOINT)))
          (opt        (make-bytevector value-size))
          (size       (make-bytevector (sizeof size_t))))
     (bytevector-uint-set! size 0 value-size

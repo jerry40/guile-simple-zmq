@@ -30,6 +30,15 @@
 (define zmq-endpoint
   "ipc:///tmp/messages")
 
+(define zmq-socks-proxy
+  "")
+
+(define zmq-plain-username
+  "")
+
+(define zmq-bind-to-device
+  "")
+
 (define (EINTR-safe proc)
   "Return a variant of PROC that catches EINTR 'zmq-error' exceptions and
 retries a call to PROC."
@@ -110,6 +119,24 @@ retries a call to PROC."
 (test-equal "get-socket-option ENDPOINT"
   zmq-endpoint
   (zmq-get-socket-option %recv-socket ZMQ_LAST_ENDPOINT))
+
+(test-equal "get-socket-option SOCKS_PROXY"
+  zmq-socks-proxy
+  (zmq-get-socket-option %recv-socket ZMQ_SOCKS_PROXY))
+
+(test-equal "get-socket-option PLAIN_USERNAME"
+  zmq-plain-username
+  (zmq-get-socket-option %recv-socket ZMQ_PLAIN_USERNAME))
+
+(test-equal "get-socket-option BINDTODEVICE"
+  zmq-bind-to-device
+  (zmq-get-socket-option %recv-socket ZMQ_BINDTODEVICE))
+
+(test-assert "get-socket-option SNDBUF"
+  (zmq-get-socket-option %recv-socket ZMQ_SNDBUF))
+
+(test-assert "get-socket-option RCVBUF"
+  (zmq-get-socket-option %recv-socket ZMQ_RCVBUF))
 
 (zmq-close-socket %recv-socket)
 (zmq-destroy-context %zmq-context)
