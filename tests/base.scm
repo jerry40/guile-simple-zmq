@@ -39,6 +39,12 @@
 (define zmq-bind-to-device
   "")
 
+(define zmq-rcv-snd-buf-size
+  BUF-SIZE)
+
+(define zmq-connect-timeout
+  1000)
+
 (define (EINTR-safe proc)
   "Return a variant of PROC that catches EINTR 'zmq-error' exceptions and
 retries a call to PROC."
@@ -132,13 +138,23 @@ retries a call to PROC."
   zmq-bind-to-device
   (zmq-get-socket-option %recv-socket ZMQ_BINDTODEVICE))
 
-(test-assert "get-socket-option SNDBUF"
+;; set underlying kernel send/receive buffer size for the socket
+(zmq-set-socket-option %recv-socket ZMQ_SNDBUF zmq-rcv-snd-buf-size)
+(zmq-set-socket-option %recv-socket ZMQ_RCVBUF zmq-rcv-snd-buf-size)
+
+(test-equal "get-socket-option SNDBUF"
+  zmq-rcv-snd-buf-size
   (zmq-get-socket-option %recv-socket ZMQ_SNDBUF))
 
-(test-assert "get-socket-option RCVBUF"
+(test-equal "get-socket-option RCVBUF"
+  zmq-rcv-snd-buf-size
   (zmq-get-socket-option %recv-socket ZMQ_RCVBUF))
 
-(test-assert "get-socket-option CONNECT_TIMEOUT"
+;; set connection timeout for the socket
+(zmq-set-socket-option %recv-socket ZMQ_CONNECT_TIMEOUT zmq-connect-timeout)
+
+(test-equal "get-socket-option CONNECT_TIMEOUT"
+  zmq-connect-timeout
   (zmq-get-socket-option %recv-socket ZMQ_CONNECT_TIMEOUT))
 
 (zmq-close-socket %recv-socket)

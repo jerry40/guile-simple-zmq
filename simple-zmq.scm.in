@@ -26,7 +26,8 @@
   #:use-module (srfi srfi-11)
   #:use-module (ice-9 iconv)
   #:use-module (ice-9 match)
-  #:export (zmq-context?
+  #:export (BUF-SIZE
+            zmq-context?
             zmq-socket?
 
             zmq-get-buffer-size
