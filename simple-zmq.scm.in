@@ -415,7 +415,6 @@ SOCKET is #f.  EVENTS must be a bitwise-or of the ZMQ_POLL* constants."
 ASCII etc."
   (set! MSG-ENCODING new-encoding))
 
-
 ;;;
 ;;; Error.
 ;;;
@@ -430,7 +429,6 @@ ASCII etc."
 (define (zmq-get-error-msg msg)
   (throw 'zmq-error `(0 ,msg)))
 
-
 ;;;
 ;;; ZMQ API.
 ;;;
@@ -503,6 +501,7 @@ ASCII etc."
                       ((eq? ZMQ_TYPE option) (sizeof int))
                       ((eq? ZMQ_LAST_ENDPOINT option) BUF-SIZE)
                       (else (sizeof size_t))))
+         (string-result? (member option (list ZMQ_LAST_ENDPOINT)))
          (opt        (make-bytevector value-size))
          (size       (make-bytevector (sizeof size_t))))
     (bytevector-uint-set! size 0 value-size
@@ -514,12 +513,11 @@ ASCII etc."
       (if (= result -1)
           (zmq-get-error errno)
           (let ((len (read-uint size (sizeof size_t))))
-            (cond
-             ((eq? ZMQ_LAST_ENDPOINT option)
+            (if string-result?
               (let ((new-bv (make-bytevector (1- len))))
                 (bytevector-copy! opt 0 new-bv 0 (1- len))
-                (bv->string new-bv)))
-             (else (read-uint opt len))))))))
+                (bv->string new-bv))
+              (read-uint opt len)))))))
 
 (define (zmq-set-socket-option socket option value)
   (define (value->type+length value)
@@ -542,7 +540,6 @@ ASCII etc."
     (when (= result -1)
       (zmq-get-error errno))))
 
-
 ;;;
 ;;; Message API.
 ;;;
@@ -632,7 +629,6 @@ finalizer when the returned message goes out of scope."
        (zmq-message-send socket first flag)
        (zmq-message-send-parts socket rest)))))
 
-
 ;;;
 ;;; Raw messages.
 ;;;
@@ -698,7 +694,6 @@ finalizer when the returned message goes out of scope."
   (let ((bv-parts (string-list->bv-list parts)))
     (zmq-send-msg-parts-bytevector socket bv-parts)))
 
-
 ;;;
 ;;; Helpers.
 ;;;
@@ -719,7 +714,6 @@ finalizer when the returned message goes out of scope."
   "Convert the list of bytevectors BV-LIST into a list of strings."
   (map bv->string bv-list))
 
-
 ;;;
 ;;; Polling.
 ;;;
@@ -793,7 +787,6 @@ denoting the events that occurred."
         (array->poll-items array length)
         (zmq-get-error errno))))
 
-
 ;;;
 ;;; Misc.
 ;;;
