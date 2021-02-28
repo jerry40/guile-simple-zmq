@@ -138,6 +138,9 @@ retries a call to PROC."
 (test-assert "get-socket-option RCVBUF"
   (zmq-get-socket-option %recv-socket ZMQ_RCVBUF))
 
+(test-assert "get-socket-option CONNECT_TIMEOUT"
+  (zmq-get-socket-option %recv-socket ZMQ_CONNECT_TIMEOUT))
+
 (zmq-close-socket %recv-socket)
 (zmq-destroy-context %zmq-context)
 

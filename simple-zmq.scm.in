@@ -513,7 +513,8 @@ ASCII etc."
           (member option (list
                           ZMQ_TYPE
                           ZMQ_SNDBUF
-                          ZMQ_RCVBUF)))
+                          ZMQ_RCVBUF
+                          ZMQ_CONNECT_TIMEOUT)))
          (value-size (cond
                       (string-result? BUF-SIZE)
                       (int-result? (sizeof int))
