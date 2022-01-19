@@ -28,6 +28,7 @@
   #:use-module (ice-9 match)
   #:export (BUF-SIZE
             zmq-context?
+            zmq-message?
             zmq-socket?
 
             zmq-get-buffer-size
