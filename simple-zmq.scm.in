@@ -652,14 +652,16 @@ finalizer when the returned message goes out of scope."
 ;;; Raw messages.
 ;;;
 
-(define (zmq-receive-bytevector socket len)
+(define* (zmq-receive-bytevector socket len
+                                 #:key (flags 0))
   (let  ((buffer (make-bytevector len 0)))
     (let-values (((result errno) (zmq_recv (socket->pointer socket)
                                            (bytevector->pointer buffer)
-                                           len 0)))
+                                           len flags)))
       (cond
        ;; Apparently after getting EINTR error, socket should be read again.
-       ((and (< result 0) (= errno 4)) (zmq-receive-bytevector socket len))
+       ((and (< result 0) (= errno 4))
+        (zmq-receive-bytevector socket len #:flags flags))
        ((< result 0) (zmq-get-error errno))
        ((= result 0) (make-bytevector 0))
        (else
@@ -671,8 +673,10 @@ finalizer when the returned message goes out of scope."
                 ret)
               buffer)))))))
 
-(define (zmq-receive socket len)
-  (let  ((buffer (zmq-receive-bytevector socket len)))
+(define* (zmq-receive socket len
+                      #:key (flags 0))
+  (let  ((buffer (zmq-receive-bytevector socket len
+                                         #:flags flags)))
     (bv->string buffer)))
 
 (define* (zmq-send-bytevector socket data #:optional (flag 0))
@@ -690,12 +694,16 @@ finalizer when the returned message goes out of scope."
   (let*  ((buffer (string->bv data)))
     (zmq-send-bytevector socket buffer flag)))
 
-(define* (zmq-get-msg-parts-bytevector socket #:optional (parts '()))
-  (let* ((part      (zmq-receive-bytevector socket BUF-SIZE))
+(define* (zmq-get-msg-parts-bytevector socket
+                                       #:optional (parts '())
+                                       #:key (flags 0))
+  (let* ((part      (zmq-receive-bytevector socket BUF-SIZE
+                                            #:flags flags))
          (new-parts (append parts (list part)))
          (opt       (zmq-get-socket-option socket ZMQ_RCVMORE)))
     (if (> opt 0)
-        (zmq-get-msg-parts-bytevector socket new-parts)
+        (zmq-get-msg-parts-bytevector socket new-parts
+                                      #:flags flags)
         new-parts)))
 
 (define (zmq-send-msg-parts-bytevector socket parts)
@@ -705,9 +713,12 @@ finalizer when the returned message goes out of scope."
         (zmq-send-bytevector socket data flag)
         (zmq-send-msg-parts-bytevector socket (cdr parts)))))
 
-(define* (zmq-get-msg-parts socket #:optional (parts '()))
+(define* (zmq-get-msg-parts socket
+                            #:optional (parts '())
+                            #:key (flags 0))
   (bv-list->string-list
-   (zmq-get-msg-parts-bytevector socket parts)))
+   (zmq-get-msg-parts-bytevector socket parts
+                                 #:flags flags)))
 
 (define (zmq-send-msg-parts socket parts)
   (let ((bv-parts (string-list->bv-list parts)))
