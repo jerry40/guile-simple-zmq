@@ -18,6 +18,7 @@
 
 (define-module (tests base)
   #:use-module (simple-zmq)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 threads)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-64))
@@ -137,6 +138,22 @@ retries a call to PROC."
 (test-equal "get-socket-option BINDTODEVICE"
   zmq-bind-to-device
   (zmq-get-socket-option %recv-socket ZMQ_BINDTODEVICE))
+
+(test-equal "get-socket-option EVENTS"
+  (list 0 ZMQ_POLLIN)
+  (let ((first (zmq-get-socket-option %recv-socket ZMQ_EVENTS))
+        (second (let ((send-socket (zmq-create-socket %zmq-context ZMQ_PUSH)))
+                  (zmq-bind-socket send-socket zmq-endpoint)
+                  (zmq-send-bytevector send-socket #vu8(1 2 3))
+                  (zmq-close-socket send-socket)
+                  (match (zmq-get-socket-option %recv-socket ZMQ_EVENTS)
+                    (0
+                     ;; It might take a bit longer for the message to reach
+                     ;; its destination, so wait for it.
+                     (sleep 5)
+                     (zmq-get-socket-option %recv-socket ZMQ_EVENTS))
+                    (flags flags)))))
+    (list first second)))
 
 ;; set underlying kernel send/receive buffer size for the socket
 (zmq-set-socket-option %recv-socket ZMQ_SNDBUF zmq-rcv-snd-buf-size)
