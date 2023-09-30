@@ -602,12 +602,23 @@ finalizer when the returned message goes out of scope."
 (define (zmq-message-size message)
   (zmq_msg_size (message->pointer message)))
 
+(define %message-content-table
+  ;; Map <zmq-message> records to bytevectors aliasing their contents.
+  (make-weak-value-hash-table))
+
 (define (zmq-message-content message)
   (let ((content-ptr (zmq_msg_data (message->pointer message)))
         (size (zmq-message-size message)))
     (if (null-pointer? content-ptr)
         (zmq-get-error-msg "Function zmq-message-content failed.")
-        (pointer->bytevector content-ptr size))))
+        (or (hashq-ref %message-content-table message)
+            (let ((bv (pointer->bytevector content-ptr size)))
+              ;; Since BV aliases memory owned by MESSAGE, ensure MESSAGE
+              ;; remains live as long as BV is live (calling 'zmq_msg_close'
+              ;; on MESSAGE while BV is still in use would lead to
+              ;; use-after-free).
+              (hashq-set! %message-content-table message bv)
+              bv)))))
 
 (define (zmq-message-gets message property)
   (let-values (((result errno)
